@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { notFound } from "next/navigation";
+import { findPageData, findTenantByHost } from "./local-store";
 import type { Product, TenantManifest } from "./types";
 
 const root = process.cwd();
@@ -11,12 +12,11 @@ async function readJson<T>(relativePath: string): Promise<T> {
 }
 
 export async function getTenantByHost(host: string): Promise<TenantManifest> {
-  const cleanHost = host.split(":")[0]?.toLowerCase();
-  const tenants = await readJson<TenantManifest[]>("data/tenants/tenants.json");
-  const tenant = tenants.find((candidate) => candidate.hostnames.includes(cleanHost));
+  const tenant = findTenantByHost(host);
 
-  if (!tenant) notFound();
-  return tenant;
+  if (tenant) return tenant;
+
+  notFound();
 }
 
 export async function getProducts(): Promise<Product[]> {
@@ -32,5 +32,9 @@ export async function getProduct(id: string): Promise<Product> {
 }
 
 export async function getPageData(tenantId: string, slug: "home" | "detail") {
-  return readJson<unknown>(`data/pages/${tenantId}/${slug}.json`);
+  const pageData = findPageData(tenantId, slug);
+
+  if (pageData) return pageData;
+
+  notFound();
 }

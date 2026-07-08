@@ -1,20 +1,21 @@
 # Next.js + Puck Multi-Tenant Stateless Demo
 
-This demo shows one stateless Next.js renderer serving two local shops:
+This demo shows one stateless Next.js renderer serving many shops:
 
 - `shop-a.local` uses `ProductGrid` for the product list.
 - `shop-b.local` uses `ProductList` for the product list.
+- `shop-1.puck.local` through `shop-1000.puck.local` are generated demo tenants served by the same deployment.
 - Both shops reuse the same `ProductDetail` layout.
-- Tenant state is not stored in process memory. Tenant manifests and page data are read from JSON files per request. In production, replace these JSON files with Redis + DB/config service.
+- Tenant state is not stored in React or request globals. Tenant manifests and page data are seeded into a local SQLite store once per Node.js process, then resolved through indexed host and page lookups. In production, replace this local store with Redis + DB/config service.
 
 ## Architecture
 
 ```txt
 request Host header
   ↓
-resolve tenant from data/tenants/tenants.json
+resolve tenant from indexed local SQLite store
   ↓
-load tenant-specific Puck page JSON
+load tenant-specific Puck page data from local SQLite
   ↓
 build runtime Puck config from trusted global registry
   ↓
@@ -115,7 +116,9 @@ kubectl -n puck-demo get pods
 
 ```txt
 lib/puck-config.tsx              trusted global Puck component registry
-lib/data.ts                      per-request data loading, no process cache
+lib/data.ts                      public data access functions used by routes
+lib/local-store.ts               local SQLite tenant/page lookup store
+lib/demo-tenants.ts              deterministic generated tenants for the 1k demo
 lib/tenant.ts                    tenant resolution from request headers
 data/tenants/tenants.json        tenant manifests
 data/pages/shop-a/home.json      shop A list page, grid layout
@@ -123,7 +126,60 @@ data/pages/shop-b/home.json      shop B list page, list layout
 data/pages/*/detail.json         shared detail layout template
 app/api/whoami/route.ts          stateless/scaling test endpoint
 k8s/deployment.yaml              3 replicas
-k8s/ingress.yaml                 shop-a.local and shop-b.local hosts
+k8s/ingress.yaml                 shop-a.local, shop-b.local, and *.puck.local hosts
+```
+
+## 1k shared-shop demo
+
+The 1k demo uses one shared Kubernetes deployment. It does not create one deployment, service, ingress, or pod per shop.
+
+Static tenants are still defined in JSON seed files. At process startup, the app seeds a local SQLite store with those static tenants plus generated demo tenants resolved from the host pattern:
+
+```txt
+shop-1.puck.local
+shop-2.puck.local
+...
+shop-1000.puck.local
+```
+
+Odd-numbered generated shops use `ProductGrid`; even-numbered generated shops use `ProductList`. Themes and Puck page titles are generated deterministically from the tenant id and stored in the local SQLite tables.
+
+Smoke test all generated shops through the same ingress:
+
+```sh
+./scripts/test-1k-shops.sh
+```
+
+Run fewer shops:
+
+```sh
+SHOP_COUNT=25 ./scripts/test-1k-shops.sh
+```
+
+Run a single generated shop:
+
+```sh
+curl -H 'Host: shop-427.puck.local' http://127.0.0.1/api/whoami
+curl -H 'Host: shop-428.puck.local' http://127.0.0.1/
+```
+
+## Monitoring pods, CPU, and memory
+
+`./scripts/setup-k3d.sh` installs metrics-server for the local k3d cluster and applies an HPA that watches CPU and memory utilization.
+
+Watch deployment replicas, HPA status, pods, pod CPU, and pod memory:
+
+```sh
+./scripts/monitor.sh
+```
+
+Useful one-off commands:
+
+```sh
+kubectl -n puck-demo get deployment nextjs-puck-demo
+kubectl -n puck-demo get hpa nextjs-puck-demo
+kubectl -n puck-demo get pods -l app=nextjs-puck-demo -o wide
+kubectl -n puck-demo top pods -l app=nextjs-puck-demo
 ```
 
 ## Production changes
