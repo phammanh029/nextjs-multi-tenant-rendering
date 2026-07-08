@@ -1,0 +1,13 @@
+{
+  "root": { "props": {} },
+  "content": [
+    {
+      "type": "ProductList",
+      "props": {
+        "id": "shop-b-product-list",
+        "title": "Shop B Products"
+      }
+    }
+  ],
+  "zones": {}
+}

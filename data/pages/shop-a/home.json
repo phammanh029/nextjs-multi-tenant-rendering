@@ -1,0 +1,13 @@
+{
+  "root": { "props": {} },
+  "content": [
+    {
+      "type": "ProductGrid",
+      "props": {
+        "id": "shop-a-product-grid",
+        "title": "Shop A Products"
+      }
+    }
+  ],
+  "zones": {}
+}

@@ -1,0 +1,36 @@
+[
+  {
+    "tenantId": "shop-a",
+    "displayName": "Shop A",
+    "hostnames": ["shop-a.local"],
+    "configVersion": 1,
+    "theme": {
+      "background": "#ffffff",
+      "foreground": "#171717",
+      "card": "#f7f7f7",
+      "border": "#dddddd"
+    },
+    "allowedComponents": {
+      "ProductGrid": { "enabled": true },
+      "ProductList": { "enabled": false },
+      "ProductDetail": { "enabled": true }
+    }
+  },
+  {
+    "tenantId": "shop-b",
+    "displayName": "Shop B",
+    "hostnames": ["shop-b.local"],
+    "configVersion": 1,
+    "theme": {
+      "background": "#fbfbf2",
+      "foreground": "#101010",
+      "card": "#ffffff",
+      "border": "#d8d3bd"
+    },
+    "allowedComponents": {
+      "ProductGrid": { "enabled": false },
+      "ProductList": { "enabled": true },
+      "ProductDetail": { "enabled": true }
+    }
+  }
+]

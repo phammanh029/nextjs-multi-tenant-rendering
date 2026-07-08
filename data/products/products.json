@@ -1,0 +1,6 @@
+[
+  { "id": "keyboard", "name": "Mechanical Keyboard", "price": 129, "description": "Compact keyboard with hot-swappable switches.", "emoji": "⌨️" },
+  { "id": "mouse", "name": "Wireless Mouse", "price": 79, "description": "Low-latency mouse for daily work and gaming.", "emoji": "🖱️" },
+  { "id": "monitor", "name": "4K Monitor", "price": 499, "description": "High-resolution display with USB-C input.", "emoji": "🖥️" },
+  { "id": "dock", "name": "USB-C Dock", "price": 149, "description": "Single-cable docking station for laptops.", "emoji": "🔌" }
+]

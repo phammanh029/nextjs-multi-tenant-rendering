@@ -1,0 +1,12 @@
+{
+  "root": { "props": {} },
+  "content": [
+    {
+      "type": "ProductDetail",
+      "props": {
+        "id": "shared-product-detail"
+      }
+    }
+  ],
+  "zones": {}
+}
