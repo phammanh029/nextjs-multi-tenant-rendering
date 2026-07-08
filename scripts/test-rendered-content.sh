@@ -6,6 +6,8 @@ ingress_name="${INGRESS_NAME:-nextjs-puck-demo}"
 base_url="${BASE_URL:-}"
 shop_count="${SHOP_COUNT:-10}"
 parallelism="${PARALLELISM:-20}"
+run_once="${RUN_ONCE:-false}"
+interval_seconds="${TEST_INTERVAL_SECONDS:-1}"
 
 detect_base_url() {
   local ingress_address
@@ -26,6 +28,7 @@ if [[ -z "$base_url" ]]; then
 fi
 
 echo "Testing rendered Puck content through ${base_url}"
+echo "Shop count: ${shop_count}; parallelism: ${parallelism}; run once: ${run_once}"
 
 run_check() {
   local host="$1"
@@ -91,6 +94,27 @@ for i in $(seq 1 "$shop_count"); do
   fi
 done
 
-xargs -0 -P "$parallelism" -n 4 bash -c 'run_check "$1" "$2" "$3" "$4"' _ < "$checks_file"
+run_cycle() {
+  local started_at
+  started_at="$(date -Iseconds)"
 
-echo "Rendered content checks passed for $((shop_count + 2)) shops with parallelism ${parallelism}."
+  echo "Starting rendered content check at ${started_at}"
+
+  if xargs -0 -P "$parallelism" -n 4 bash -c 'run_check "$1" "$2" "$3" "$4"' _ < "$checks_file"; then
+    echo "Rendered content checks passed for $((shop_count + 2)) shops with parallelism ${parallelism}."
+    return 0
+  fi
+
+  echo "Rendered content checks failed at $(date -Iseconds)." >&2
+  return 1
+}
+
+if [[ "$run_once" == "true" ]]; then
+  run_cycle
+  exit $?
+fi
+
+while true; do
+  run_cycle || true
+  sleep "$interval_seconds"
+done

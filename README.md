@@ -96,7 +96,7 @@ The script reads the load-balancer IP from the `nextjs-puck-demo` ingress. You c
 BASE_URL=http://172.22.0.3 ./scripts/test-rendered-content.sh
 ```
 
-By default, it checks `shop-a.local`, `shop-b.local`, and the first 10 generated shops. Increase generated shop coverage:
+By default, it keeps running until you stop it with `Ctrl-C`. Each cycle checks `shop-a.local`, `shop-b.local`, and the first 10 generated shops. Increase generated shop coverage:
 
 ```sh
 SHOP_COUNT=1000 ./scripts/test-rendered-content.sh
@@ -106,6 +106,12 @@ The checks run in parallel. Tune request concurrency with `PARALLELISM`:
 
 ```sh
 SHOP_COUNT=1000 PARALLELISM=50 ./scripts/test-rendered-content.sh
+```
+
+Run exactly one cycle for CI-style verification:
+
+```sh
+RUN_ONCE=true SHOP_COUNT=1000 PARALLELISM=50 ./scripts/test-rendered-content.sh
 ```
 
 Manual curl tests:
@@ -132,6 +138,7 @@ CPU target:    35% of requested CPU
 Memory target: 45% of requested memory
 Min pods:      3
 Max pods:      20
+Scale up:      grow by 50% every 15 seconds while above target
 ```
 
 Example load test with `hey`:
@@ -207,6 +214,12 @@ Run the rendered checks in parallel:
 
 ```sh
 BASE_URL=http://172.22.0.3 SHOP_COUNT=1000 PARALLELISM=50 ./scripts/test-rendered-content.sh
+```
+
+Run a single pass instead of the continuous loop:
+
+```sh
+BASE_URL=http://172.22.0.3 RUN_ONCE=true SHOP_COUNT=1000 PARALLELISM=50 ./scripts/test-rendered-content.sh
 ```
 
 Run fewer shops:
