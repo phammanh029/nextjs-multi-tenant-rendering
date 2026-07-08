@@ -11,9 +11,19 @@ fi
 
 docker build -t nextjs-puck-demo:local .
 k3d image import nextjs-puck-demo:local -c "$cluster_name"
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml
+
+if kubectl -n ingress-nginx get deployment ingress-nginx-controller >/dev/null 2>&1; then
+  echo "ingress-nginx controller already exists; skipping remote manifest apply."
+else
+  kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml
+fi
 kubectl -n ingress-nginx rollout status deployment/ingress-nginx-controller --timeout=180s
-kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+
+if kubectl -n kube-system get deployment metrics-server >/dev/null 2>&1; then
+  echo "metrics-server already exists; skipping remote manifest apply."
+else
+  kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+fi
 if ! kubectl -n kube-system get deployment metrics-server -o jsonpath='{.spec.template.spec.containers[0].args}' | grep -q -- "--kubelet-insecure-tls"; then
   kubectl -n kube-system patch deployment metrics-server --type=json -p='[
     {"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}

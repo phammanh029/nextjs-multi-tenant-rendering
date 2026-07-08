@@ -44,6 +44,8 @@ Open:
 ```txt
 http://shop-a.local:3000
 http://shop-b.local:3000
+http://shop-a.local:3000/products
+http://shop-b.local:3000/products
 http://shop-a.local:3000/products/keyboard
 http://shop-b.local:3000/products/keyboard
 ```
@@ -79,6 +81,26 @@ kubectl -n puck-demo get pods -o wide
 ```
 
 You should see different `pod` values returned by `/api/whoami`. The tenant is resolved from the `Host` header on every request, so any pod can serve either shop.
+
+## Rendered Puck content test
+
+`/api/whoami` is useful for pod routing, but it does not prove the Puck renderer produced tenant-specific UI. Use this script to fetch rendered product-list and product-detail HTML through the ingress load-balancer IP:
+
+```sh
+./scripts/test-rendered-content.sh
+```
+
+The script reads the load-balancer IP from the `nextjs-puck-demo` ingress. You can also pass it explicitly:
+
+```sh
+BASE_URL=http://172.22.0.3 ./scripts/test-rendered-content.sh
+```
+
+By default, it checks `shop-a.local`, `shop-b.local`, and the first 10 generated shops. Increase generated shop coverage:
+
+```sh
+SHOP_COUNT=1000 ./scripts/test-rendered-content.sh
+```
 
 Manual curl tests:
 
@@ -148,6 +170,12 @@ Smoke test all generated shops through the same ingress:
 
 ```sh
 ./scripts/test-1k-shops.sh
+```
+
+Smoke test generated shop rendered product pages:
+
+```sh
+BASE_URL=http://172.22.0.3 SHOP_COUNT=1000 ./scripts/test-rendered-content.sh
 ```
 
 Run fewer shops:
