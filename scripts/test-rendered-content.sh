@@ -5,6 +5,7 @@ namespace="${NAMESPACE:-puck-demo}"
 ingress_name="${INGRESS_NAME:-nextjs-puck-demo}"
 base_url="${BASE_URL:-}"
 shop_count="${SHOP_COUNT:-10}"
+parallelism="${PARALLELISM:-20}"
 
 detect_base_url() {
   local ingress_address
@@ -26,43 +27,70 @@ fi
 
 echo "Testing rendered Puck content through ${base_url}"
 
-assert_contains() {
-  local content="$1"
-  local expected="$2"
-  local label="$3"
-
-  if [[ "$content" != *"$expected"* ]]; then
-    echo "Expected ${label} to contain: ${expected}" >&2
-    exit 1
-  fi
-}
-
-check_shop() {
+run_check() {
   local host="$1"
   local expected_title="$2"
   local expected_layout="$3"
+  local target_base_url="$4"
 
   local list_html
-  list_html="$(curl -fsS -H "Host: ${host}" "${base_url}/products")"
-  assert_contains "$list_html" "$expected_title" "${host} product list"
-  assert_contains "$list_html" "$expected_layout" "${host} product list"
-  assert_contains "$list_html" "Mechanical Keyboard" "${host} product list"
+  list_html="$(curl -fsS -H "Host: ${host}" "${target_base_url}/products")"
+
+  if [[ "$list_html" != *"$expected_title"* ]]; then
+    echo "Expected ${host} product list to contain: ${expected_title}" >&2
+    exit 1
+  fi
+
+  if [[ "$list_html" != *"$expected_layout"* ]]; then
+    echo "Expected ${host} product list to contain: ${expected_layout}" >&2
+    exit 1
+  fi
+
+  if [[ "$list_html" != *"Mechanical Keyboard"* ]]; then
+    echo "Expected ${host} product list to contain: Mechanical Keyboard" >&2
+    exit 1
+  fi
 
   local detail_html
-  detail_html="$(curl -fsS -H "Host: ${host}" "${base_url}/products/keyboard")"
-  assert_contains "$detail_html" "Mechanical Keyboard" "${host} product detail"
-  assert_contains "$detail_html" "shared default detail layout" "${host} product detail"
+  detail_html="$(curl -fsS -H "Host: ${host}" "${target_base_url}/products/keyboard")"
+
+  if [[ "$detail_html" != *"Mechanical Keyboard"* ]]; then
+    echo "Expected ${host} product detail to contain: Mechanical Keyboard" >&2
+    exit 1
+  fi
+
+  if [[ "$detail_html" != *"shared default detail layout"* ]]; then
+    echo "Expected ${host} product detail to contain: shared default detail layout" >&2
+    exit 1
+  fi
 
   echo "ok ${host}"
 }
 
-check_shop "shop-a.local" "Shop A Products" "grid layout"
-check_shop "shop-b.local" "Shop B Products" "list layout"
+export -f run_check
+
+queue_check() {
+  local host="$1"
+  local expected_title="$2"
+  local expected_layout="$3"
+
+  printf '%s\0%s\0%s\0%s\0' "$host" "$expected_title" "$expected_layout" "$base_url"
+}
+
+checks_file="$(mktemp)"
+trap 'rm -f "$checks_file"' EXIT
+
+queue_check "shop-a.local" "Shop A Products" "grid layout" >> "$checks_file"
+queue_check "shop-b.local" "Shop B Products" "list layout" >> "$checks_file"
 
 for i in $(seq 1 "$shop_count"); do
   if (( i % 2 == 1 )); then
-    check_shop "shop-${i}.puck.local" "Shop ${i} Products" "grid layout"
+    queue_check "shop-${i}.puck.local" "Shop ${i} Products" "grid layout" >> "$checks_file"
   else
-    check_shop "shop-${i}.puck.local" "Shop ${i} Products" "list layout"
+    queue_check "shop-${i}.puck.local" "Shop ${i} Products" "list layout" >> "$checks_file"
   fi
 done
+
+xargs -0 -P "$parallelism" -n 4 bash -c 'run_check "$1" "$2" "$3" "$4"' _ < "$checks_file"
+
+echo "Rendered content checks passed for $((shop_count + 2)) shops with parallelism ${parallelism}."

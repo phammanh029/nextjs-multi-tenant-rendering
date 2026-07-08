@@ -102,6 +102,12 @@ By default, it checks `shop-a.local`, `shop-b.local`, and the first 10 generated
 SHOP_COUNT=1000 ./scripts/test-rendered-content.sh
 ```
 
+The checks run in parallel. Tune request concurrency with `PARALLELISM`:
+
+```sh
+SHOP_COUNT=1000 PARALLELISM=50 ./scripts/test-rendered-content.sh
+```
+
 Manual curl tests:
 
 ```sh
@@ -119,7 +125,14 @@ kubectl -n puck-demo rollout status deployment/nextjs-puck-demo
 
 ## HPA test
 
-The repo includes `k8s/hpa.yaml`, but HPA requires metrics-server. For a real HPA test, install metrics-server in k3d first.
+The repo includes `k8s/hpa.yaml`, and `./scripts/setup-k3d.sh` installs metrics-server for k3d. HPA is configured to scale early for demo feedback:
+
+```txt
+CPU target:    35% of requested CPU
+Memory target: 45% of requested memory
+Min pods:      3
+Max pods:      20
+```
 
 Example load test with `hey`:
 
@@ -133,6 +146,18 @@ Check HPA:
 kubectl -n puck-demo get hpa
 kubectl -n puck-demo get pods
 ```
+
+Verify that memory metrics are available to HPA:
+
+```sh
+./scripts/check-hpa-memory.sh
+```
+
+You know memory-based HPA input is working when:
+
+- `kubectl -n puck-demo get hpa nextjs-puck-demo` shows a `memory: current/45%` target.
+- `kubectl -n puck-demo top pods -l app=nextjs-puck-demo` shows a non-empty `MEMORY` column.
+- `./scripts/check-hpa-memory.sh` exits successfully.
 
 ## Important files
 
@@ -178,6 +203,12 @@ Smoke test generated shop rendered product pages:
 BASE_URL=http://172.22.0.3 SHOP_COUNT=1000 ./scripts/test-rendered-content.sh
 ```
 
+Run the rendered checks in parallel:
+
+```sh
+BASE_URL=http://172.22.0.3 SHOP_COUNT=1000 PARALLELISM=50 ./scripts/test-rendered-content.sh
+```
+
 Run fewer shops:
 
 ```sh
@@ -199,6 +230,12 @@ Watch deployment replicas, HPA status, pods, pod CPU, and pod memory:
 
 ```sh
 ./scripts/monitor.sh
+```
+
+Check that HPA can read pod memory metrics:
+
+```sh
+./scripts/check-hpa-memory.sh
 ```
 
 Useful one-off commands:
